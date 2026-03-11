@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <tuple>
@@ -107,7 +108,7 @@ namespace FPCFilter {
             size_t count = 3;
             std::vector<double> distances(SAMPLES, 0.0);
 
-            std::unordered_map<uint64_t, size_t> dist_map;
+            std::vector<size_t> dist_map(256, 0);
 
             std::vector<double> all_distances;
 
@@ -128,15 +129,11 @@ namespace FPCFilter {
                         sum += std::sqrt(sqr_dists[j]);
                     }
                     sum /= count;
+                    uint8_t bin = std::clamp((uint8_t)(4.0 * log2(sum * 100)), (uint8_t)0, std::numeric_limits<uint8_t>::max());
 
                     #pragma omp critical
                     {
-                        uint64_t k = std::ceil(sum * 100);
-                        if (dist_map.find(k) == dist_map.end()){
-                            dist_map[k] = 1;
-                        }else{
-                            dist_map[k] += 1;
-                        }
+                        dist_map[bin]++;
                     }
                     indices.clear(); indices.resize(count);
                     sqr_dists.clear(); sqr_dists.resize(count);
@@ -144,15 +141,9 @@ namespace FPCFilter {
             }
 
             uint64_t max_val = std::numeric_limits<uint64_t>::min();
-            int d = 0;
-            for (auto it : dist_map){
-                if (it.second > max_val){
-                    d = it.first;
-                    max_val = it.second;
-                }
-            }
+            int best_bin = std::distance(dist_map.begin(), std::max_element(dist_map.begin(), dist_map.end()));
 
-            double spacing = static_cast<double>(d) / 100.0;
+            double spacing = pow(2, best_bin / 4.0) / 100.0;
             (*stats)["spacing"] = spacing;
 
             std::cout << " -> Spacing estimation completed (" << spacing << " meters)" << std::endl << std::endl;
