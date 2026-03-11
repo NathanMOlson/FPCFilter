@@ -4,7 +4,6 @@
 #include <map>
 #include <tuple>
 #include <vector>
-#include <random>
 
 #include "ply.hpp"
 #include "vendor/nanoflann.hpp"
@@ -111,11 +110,6 @@ namespace FPCFilter {
             std::unordered_map<uint64_t, size_t> dist_map;
 
             std::vector<double> all_distances;
-            std::random_device rd;
-            std::mt19937_64 gen(rd());
-            std::uniform_int_distribution<size_t> randomDis(
-                0, np - 1
-            );
 
             #pragma omp parallel private (indices, sqr_dists)
             {
@@ -125,7 +119,7 @@ namespace FPCFilter {
                 #pragma omp for
                 for (long long i = 0; i < SAMPLES; ++i)
                 {
-                    const size_t idx = randomDis(gen);
+                    const size_t idx = (i*np)/SAMPLES;
                     knnSearch(file.points[idx], count, indices, sqr_dists);
 
                     double sum = 0.0;
